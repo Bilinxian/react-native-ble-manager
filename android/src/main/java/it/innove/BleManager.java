@@ -15,8 +15,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -128,6 +133,8 @@ class BleManager extends ReactContextBaseJavaModule {
         getReactApplicationContext().getJSModule(RCTNativeAppEventEmitter.class).emit(eventName, params);
     }
 
+    private ScanBroadcastReceiver scanBroadcastReceiver;
+
     @ReactMethod
     public void start(ReadableMap options, Callback callback) {
         Log.d(LOG_TAG, "start");
@@ -141,7 +148,7 @@ class BleManager extends ReactContextBaseJavaModule {
             forceLegacy = options.getBoolean("forceLegacy");
         }
 
-        if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
+        if (!forceLegacy) {
             scanManager = new LollipopScanManager(reactContext, this);
         } else {
             scanManager = new LegacyScanManager(reactContext, this);
@@ -153,8 +160,65 @@ class BleManager extends ReactContextBaseJavaModule {
         IntentFilter intentFilter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
         intentFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
         context.registerReceiver(mReceiver, intentFilter);
+        registerScanBroadcast();
         callback.invoke();
         Log.d(LOG_TAG, "BleManager initialized");
+
+    }
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case BleAction.BluetoothStartScan:
+
+                    break;
+                case BleAction.BleManagerStopScan:
+                    WritableMap map = Arguments.createMap();
+                    map.putInt("status", 10);
+                    BleManager.this.sendEvent("BleManagerStopScan", map);
+                    break;
+                case BleAction.BleManagerDiscover:
+                    BleInfo bleInfo = (BleInfo) msg.obj;
+
+                    WritableMap deviceMap = Arguments.createMap();
+                    deviceMap.putString("id", bleInfo.getId());
+                    deviceMap.putInt("rssi", bleInfo.getRssi());
+                    deviceMap.putString("name", bleInfo.getName());
+                    deviceMap.putString("type", bleInfo.getType());
+                    BleManager.this.savePeripheral(bleInfo.getBluetoothDevice());
+                    BleManager.this.sendEvent("BleManagerDiscoverPeripheral", deviceMap);
+                    break;
+            }
+
+        }
+    };
+
+    public void registerScanBroadcast() {
+        //注册蓝牙扫描状态广播接收者
+        if (scanBroadcastReceiver == null) {
+            scanBroadcastReceiver = new ScanBroadcastReceiver(mHandler);
+            IntentFilter filter = new IntentFilter();
+            //开始扫描
+            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
+            //扫描结束
+            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+            //扫描中，返回结果
+            filter.addAction(BluetoothDevice.ACTION_FOUND);
+            //扫描模式改变
+            filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
+
+            filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+            //连接断开
+            filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+            //配对状态改变
+            filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+            //配对请求，也就系统弹窗提示是否进行配对
+            filter.addAction(BluetoothDevice.ACTION_PAIRING_REQUEST);
+            //注册广播接收监听，用完不要忘了解注册哦
+            reactContext.registerReceiver(scanBroadcastReceiver, filter);
+        }
     }
 
     @ReactMethod
@@ -197,9 +261,10 @@ class BleManager extends ReactContextBaseJavaModule {
                 }
             }
         }
-
-        if (scanManager != null)
-            scanManager.scan(serviceUUIDs, scanSeconds, options, callback);
+        getBluetoothAdapter().startDiscovery();
+//        if (scanManager != null) {
+//            scanManager.scan(serviceUUIDs, scanSeconds, options, callback);
+//        }
     }
 
     @ReactMethod
@@ -453,12 +518,12 @@ class BleManager extends ReactContextBaseJavaModule {
         synchronized (peripherals) {
             if (!peripherals.containsKey(address)) {
                 Peripheral peripheral;
-                if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
+                if (!forceLegacy) {
                     peripheral = new LollipopPeripheral(device, reactContext);
                 } else {
                     peripheral = new Peripheral(device, reactContext);
                 }
-                peripherals.put(device.getAddress(), peripheral);
+                peripherals.put(address, peripheral);
             }
         }
         return peripherals.get(address);
@@ -736,8 +801,7 @@ class BleManager extends ReactContextBaseJavaModule {
 
     public static WritableArray bytesToWritableArray(byte[] bytes) {
         WritableArray value = Arguments.createArray();
-        for (int i = 0; i < bytes.length; i++)
-            value.pushInt((bytes[i] & 0xFF));
+        for (byte aByte : bytes) value.pushInt((aByte & 0xFF));
         return value;
     }
 
@@ -751,7 +815,8 @@ class BleManager extends ReactContextBaseJavaModule {
                 }
                 if (BluetoothAdapter.checkBluetoothAddress(peripheralUUID)) {
                     BluetoothDevice device = bluetoothAdapter.getRemoteDevice(peripheralUUID);
-                    if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
+                    Log.i(LOG_TAG, device.toString());
+                    if (!forceLegacy) {
                         peripheral = new LollipopPeripheral(device, reactContext);
                     } else {
                         peripheral = new Peripheral(device, reactContext);
@@ -771,6 +836,7 @@ class BleManager extends ReactContextBaseJavaModule {
     @ReactMethod
     public void removeListeners(Integer count) {
         // Keep: Required for RN built in Event Emitter Calls.
+        reactContext.unregisterReceiver(scanBroadcastReceiver);
     }
 
     @Override
