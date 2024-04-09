@@ -27,13 +27,10 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @SuppressLint("MissingPermission")
 public class DefaultScanManager extends ScanManager {
-
-    private boolean isScanning = false;
 
     public DefaultScanManager(ReactApplicationContext reactContext, BleManager bleManager) {
         super(reactContext, bleManager);
@@ -46,7 +43,6 @@ public class DefaultScanManager extends ScanManager {
         scanSessionId.incrementAndGet();
 
         getBluetoothAdapter().getBluetoothLeScanner().stopScan(mScanCallback);
-        isScanning = false;
         callback.invoke();
     }
 
@@ -97,61 +93,14 @@ public class DefaultScanManager extends ScanManager {
             }
         }
 
-
         if (options.hasKey("exactAdvertisingName")) {
-            ArrayList<Object> expectedNames = options.getArray("exactAdvertisingName").toArrayList();
-            Log.d(BleManager.LOG_TAG, "Filter on advertising names:" + expectedNames);
-            for (Object name : expectedNames) {
-                ScanFilter filter = new ScanFilter.Builder().setDeviceName(name.toString()).build();
-                filters.add(filter);
-            }
-        }
-
-        if (options.hasKey("manufacturerData")) {
-            ReadableMap manufacturerDataMap = options.getMap("manufacturerData");
-            if (manufacturerDataMap != null && manufacturerDataMap.hasKey("manufacturerId")) {
-                int manufacturerId = manufacturerDataMap.getInt("manufacturerId");
-                ReadableArray manufacturerData = manufacturerDataMap.getArray("manufacturerData");
-                ReadableArray manufacturerDataMask = manufacturerDataMap.getArray("manufacturerDataMask");
-                byte[] manufacturerDataBytes = new byte[0];
-                byte[] manufacturerDataMaskBytes = new byte[0];
-                if (manufacturerData != null) {
-                    manufacturerDataBytes = new byte[manufacturerData.size()];
-                    for (int i = 0; i < manufacturerData.size(); i++) {
-                        manufacturerDataBytes[i] = Integer.valueOf(manufacturerData.getInt(i)).byteValue();
-                    }
-                }
-                if (manufacturerDataMask != null) {
-                    manufacturerDataMaskBytes = new byte[manufacturerDataMask.size()];
-                    for (int i = 0; i < manufacturerDataMask.size(); i++) {
-                        manufacturerDataMaskBytes[i] = Integer.valueOf(manufacturerDataMask.getInt(i)).byteValue();
-                    }
-                }
-                if (manufacturerDataBytes.length != manufacturerDataMaskBytes.length) {
-                    callback.invoke("manufacturerData and manufacturerDataMask must have the same length");
-                    return;
-                }
-                Log.d(
-                    BleManager.LOG_TAG,
-                    String.format(
-                        "Filter on manufacturerId: %d; manufacturerData: %s; manufacturerDataMask: %s",
-                        manufacturerId,
-                        Arrays.toString(manufacturerDataBytes),
-                        Arrays.toString(manufacturerDataMaskBytes)
-                    )
-                );
-                ScanFilter filter = new ScanFilter.Builder()
-                    .setManufacturerData(
-                        manufacturerId,
-                        manufacturerDataBytes,
-                        manufacturerDataMaskBytes
-                    ).build();
-                filters.add(filter);
-            }
+            String expectedName = options.getString("exactAdvertisingName");
+            Log.d(BleManager.LOG_TAG, "Filter on advertising name:" + expectedName);
+            ScanFilter filter = new ScanFilter.Builder().setDeviceName(expectedName).build();
+            filters.add(filter);
         }
 
         getBluetoothAdapter().getBluetoothLeScanner().startScan(filters, scanSettingsBuilder.build(), mScanCallback);
-        isScanning = true;
 
         if (scanSeconds > 0) {
             Thread thread = new Thread() {
@@ -174,7 +123,6 @@ public class DefaultScanManager extends ScanManager {
                             if (scanSessionId.intValue() == currentScanSession) {
                                 if (btAdapter.getState() == BluetoothAdapter.STATE_ON) {
                                     btAdapter.getBluetoothLeScanner().stopScan(mScanCallback);
-                                    isScanning = false;
                                 }
 
                                 WritableMap map = Arguments.createMap();
@@ -248,14 +196,9 @@ public class DefaultScanManager extends ScanManager {
 
         @Override
         public void onScanFailed(final int errorCode) {
-            isScanning = false;
             WritableMap map = Arguments.createMap();
             map.putInt("status", errorCode);
             bleManager.sendEvent("BleManagerStopScan", map);
         }
     };
-
-    public boolean isScanning() {
-        return isScanning;
-    }
 }
