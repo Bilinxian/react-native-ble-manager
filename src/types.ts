@@ -38,8 +38,10 @@ export interface Peripheral {
 export interface AdvertisingData {
   isConnectable?: boolean;
   localName?: string;
-  manufacturerData?: CustomAdvertisingData;
-  serviceData?: CustomAdvertisingData;
+  rawData?: CustomAdvertisingData;
+  manufacturerData?: Record<string, CustomAdvertisingData>;
+  manufacturerRawData?: CustomAdvertisingData;
+  serviceData?: Record<string, CustomAdvertisingData>;
   serviceUUIDs?: string[];
   txPowerLevel?: number;
 }
@@ -74,6 +76,17 @@ export interface StartOptions {
    * [android only]
    */
   forceLegacy?: boolean;
+}
+
+export interface ConnectOptions {
+  /**
+   * [android only]
+   */
+  autoconnect?: boolean;
+  /**
+   * [android only]
+   */
+  phy?: BleScanPhyMode;
 }
 
 /**
@@ -125,7 +138,33 @@ export interface ScanOptions {
    * if `callbackType` is set to `FirstMatch`, the shortenedLocalName will be used for filtering.
    * https://developer.android.com/reference/android/bluetooth/le/ScanFilter.Builder#setDeviceName(java.lang.String)
    */
-  exactAdvertisingName?: string;
+  exactAdvertisingName?: string|string[];
+  /**
+   * Android only. Filters scan results by manufacturer id and data.
+   * `manufacturerId` usually matches the company id, can be given as a hex, e.g. 0xe4f7.
+   * `manufacturerData` and `manufacturerDataMask` must have the same length. For any bit in the mask, set it to 1 if
+   * it needs to match the one in manufacturer data, otherwise set it to 0.
+   * https://developer.android.com/reference/android/bluetooth/le/ScanFilter.Builder#setManufacturerData(int,%20byte[],%20byte[])
+   */
+  manufacturerData?: {
+    manufacturerId: number;
+    manufacturerData?: number[];
+    manufacturerDataMask?: number[];
+  }
+  /**
+   * When using compaion mode, only associate single peripheral.
+   *
+   * See: https://developer.android.com/reference/android/companion/AssociationRequest.Builder#setSingleDevice(boolean)
+   */
+  single?: boolean;
+  companion?: boolean;
+}
+
+export interface CompanionScanOptions {
+  /**
+   * Scan only for a single peripheral.
+   */
+  single?: boolean;
 }
 
 /**
@@ -333,3 +372,20 @@ export interface BleManagerDidUpdateNotificationStateForEvent {
    */
   readonly code: number;
 }
+
+/**
+ * [Android only]
+ *
+ * Associate callback received a failure or failed to start the intent to
+ * pick the device to associate.
+ */
+export type BleManagerCompanionFailure = { error: string; };
+
+/**
+ * [Android only]
+ *
+ * User picked a device to associate with.
+ *
+ * Null if the request was cancelled by the user.
+ */
+export type BleManagerCompanionPeripheral = Peripheral | null;

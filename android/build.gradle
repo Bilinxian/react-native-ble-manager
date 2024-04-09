@@ -20,15 +20,21 @@ def safeExtGet(prop, fallback) {
 }
 
 android {
-	compileSdkVersion safeExtGet("compileSdkVersion", 31)
+	def agpVersion = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION
+	if (agpVersion.tokenize('.')[0].toInteger() >= 7) {
+	  namespace "it.innove"
+	}
+	
+	compileSdk safeExtGet("compileSdk", 34)
 
 	compileOptions {
-		sourceCompatibility JavaVersion.VERSION_1_8
-		targetCompatibility JavaVersion.VERSION_1_8
+		sourceCompatibility JavaVersion.VERSION_1_9
+		targetCompatibility JavaVersion.VERSION_1_9
 	}
 
 	defaultConfig {
 		minSdkVersion safeExtGet("minSdkVersion", 21)
+		targetSdk safeExtGet("targetSdk", 34)
 	}
 	lintOptions {
 		abortOnError false
