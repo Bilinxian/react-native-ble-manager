@@ -5,7 +5,6 @@
  */
 
 import { TurboModule, RNOHContext, RNOHLogger } from '@rnoh/react-native-openharmony/ts';
-import { TM } from "./generated/ts"
 import access from '@ohos.bluetooth.access';
 import ble from '@ohos.bluetooth.ble';
 import Logger from "./BleManagerLogger"
@@ -19,7 +18,10 @@ import {
   Characteristic,
   Service,
   Descriptor,
-  Peripheral
+  Peripheral,
+  CompanionScanOptions,
+  ConnectOptions,
+  ConnectionPriority,
 } from "./types"
 import DefaultScanManager from './DefaultScanManager';
 import LightWeightMap from '@ohos.util.LightWeightMap';
@@ -36,7 +38,8 @@ const TAG = 'BleTurboModule'
 
 export type TurboModuleContext = RNOHContext;
 
-export class BleTurboModule extends TurboModule implements TM.ReactNativeBleManager.Spec {
+
+export class BleTurboModule extends TurboModule {
   public logger: RNOHLogger;
   private scanManager: DefaultScanManager;
   private peripherals: LightWeightMap<string, PeripheralData> = new LightWeightMap<string, PeripheralData>();
@@ -71,8 +74,7 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
     throw new Error('Method not implemented.');
   }
 
-  requestConnectionPriority(peripheralId: string,
-    connectionPriority: TM.ReactNativeBleManager.ConnectionPriority): Promise<boolean> {
+  requestConnectionPriority(peripheralId: string, connectionPriority: ConnectionPriority): Promise<boolean> {
     throw new Error('Method not implemented.');
   }
 
@@ -88,7 +90,7 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
     throw new Error('Method not implemented.');
   }
 
-  companionScan(serviceUUIDs: string[], options: TM.ReactNativeBleManager.CompanionScanOptions): Promise<unknown> {
+  companionScan(serviceUUIDs: string[], options: CompanionScanOptions): Promise<unknown> {
     throw new Error('Method not implemented.');
   }
 
@@ -627,7 +629,7 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
     return Promise.resolve();
   }
 
-  connect(peripheralId: string, options: TM.ReactNativeBleManager.ConnectOptions): Promise<void> {
+  connect(peripheralId: string, options: ConnectOptions): Promise<void> {
     this.logger.info("Connect to: " + peripheralId)
     const peripheral = this.retrieveOrCreatePeripheral(peripheralId)
     if (peripheral === null || peripheral === undefined) {

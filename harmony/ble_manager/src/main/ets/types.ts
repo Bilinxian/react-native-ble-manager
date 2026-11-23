@@ -134,3 +134,20 @@ export type Characteristic = {
 export type Service = {
   uuid: string;
 }
+
+export enum BleScanPhyMode {
+  LE_1M = 1,
+  LE_2M = 2,
+  LE_CODED = 3,
+  ALL_SUPPORTED = 255,
+}
+
+export type ConnectOptions = {autoconnect?: boolean, phy?: BleScanPhyMode}
+
+export enum ConnectionPriority {
+  balanced = 0,
+  high = 1,
+  low = 2,
+}
+
+export type CompanionScanOptions = {single?: boolean}

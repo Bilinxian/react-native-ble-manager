@@ -6,7 +6,7 @@
 
 #include "RNOH/Package.h"
 #include "RNOH/ArkTSTurboModule.h"
-#include "./generated/ReactNativeBleManager.h"
+#include "ReactNativeBleManager.h"
 
 namespace rnoh {
 

@@ -7,9 +7,8 @@
 import ble from '@ohos.bluetooth.ble';
 import { JSON, util } from '@kit.ArkTS';
 import constant from '@ohos.bluetooth.constant';
-import { TM } from "./generated/ts";
 import { TurboModuleContext } from './BleTurboModule';
-import { AdvertisingData, BleConnectPeripheralEvent, CustomAdvertisingData, Peripheral } from './types';
+import { AdvertisingData, BleConnectPeripheralEvent, CustomAdvertisingData, Peripheral, ConnectOptions} from './types';
 import { BusinessError } from "@kit.BasicServicesKit"
 import Logger from "./BleManagerLogger"
 
@@ -87,7 +86,7 @@ export default class PeripheralData {
     this.advertisingDataBytes = data
   }
 
-  connect(options: TM.ReactNativeBleManager.ConnectOptions): boolean {
+  connect(options: ConnectOptions): boolean {
     if (!this.connected && this.device) {
       this.onBLEConnectionStateChange(this.device)
       try {
