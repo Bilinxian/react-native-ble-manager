@@ -1,14 +1,15 @@
 {
-  "name": "react-native-ble-manager",
-  "version": "10.1.5",
+  "name": "@react-native-ohos/react-native-ble-manager",
+  "version": "11.5.4-beta.3",
   "description": "A BLE module for react native.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/innoveit/react-native-ble-manager.git"
+    "url": "https://gitcode.com/CPF-RN/rntpc_react-native-ble-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/innoveit/react-native-ble-manager/issues"
+    "url": "https://gitcode.com/CPF-RN/rntpc_react-native-ble-manager/issues"
   },
+  "homepage": "https://gitcode.com/CPF-RN/rntpc_react-native-ble-manager#readme",
   "keywords": [
     "react-native",
     "android",
@@ -32,27 +33,31 @@
     "/android",
     "!/android/build",
     "/ios",
-    "/*.podspec"
+    "/harmony",
+    "index.js",
+    "index.d.ts",
+    "index.harmony.js",
+    "CHANGELOG.md",
+    "README.OpenSource",
+    "!build"
   ],
-  "scripts": {
-    "version": "git add -A",
-    "clean": "rimraf dist",
-    "type:check": "tsc -p tsconfig.json --noEmit",
-    "prebuild": "npm run clean",
-    "build:cjs": "tsc --module commonjs --outDir dist/cjs",
-    "build:esm": "tsc --outDir dist/esm",
-    "build": "npm run build:esm && npm run build:cjs",
-    "watch": "npm run build --watch",
-    "prepare": "npm run build",
-    "preversion": "npm run build",
-    "postversion": "git push --follow-tags"
+  "harmony": {
+    "alias": "react-native-ble-manager",
+    "codegenConfig": {
+      "specPaths": [
+        "./src"
+      ]
+    }
   },
   "peerDependencies": {
-    "react-native": ">=0.60.0"
+    "react-native": ">=0.60.0",
+    "react-native-ble-manager":"11.5.2"
   },
   "devDependencies": {
-    "react-native": "0.71.0",
+    "react-native": "0.73.6",
     "rimraf": "4.1.2",
-    "typescript": "4.9.5"
+    "typescript": "5.5.4"
+  },
+  "dependencies": {
   }
 }

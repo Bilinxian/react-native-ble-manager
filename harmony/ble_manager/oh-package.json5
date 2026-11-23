@@ -1,0 +1,12 @@
+{
+  license: 'ISC',
+  types: '',
+  name: '@react-native-ohos/react-native-ble-manager',
+  description: '',
+  main: 'index.ets',
+  type: 'module',
+  version: '11.5.4-beta.3',
+  dependencies: {
+    "@rnoh/react-native-openharmony": "file:../../node_modules/react-native-harmony/react_native_openharmony.har"
+  },
+}

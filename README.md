@@ -1,959 +1,348 @@
-# react-native-ble-manager
+> 文档模板：v0.4.2
 
-[![npm version](https://img.shields.io/npm/v/react-native-ble-manager.svg?style=flat)](https://www.npmjs.com/package/react-native-ble-manager)
-[![npm downloads](https://img.shields.io/npm/dm/react-native-ble-manager.svg?style=flat)](https://www.npmjs.com/package/react-native-ble-manager)
-[![GitHub issues](https://img.shields.io/github/issues/innoveit/react-native-ble-manager.svg?style=flat)](https://github.com/innoveit/react-native-ble-manager/issues)
+<p align="center">
+  <h1 align="center"> <code>react-native-ble-manager</code> </h1>
+</p>
 
-A React Native Bluetooth Low Energy library.
+本项目基于 [react-native-ble-manager](https://github.com/innoveit/react-native-ble-manager) 开发。
 
-Originally inspired by https://github.com/don/cordova-plugin-ble-central.
+该第三方库的仓库已迁移至 GitCode，且支持直接从 npm 下载，新的包名为：`@react-native-ohos/react-native-ble-manager` 版本所属关系如下：
 
-## Introduction
+| 三方库名称    | 三方库版本（npm地址）    | 发布信息     | 支持RN版本    | Autolink     | 编译API版本     | 社区基线版本    |  源码地址   |
+| ------------ | ------------ | ------------------------------ | ------------- | ------------- |------------------------ | ------------- | ------------- |
+| @react-native-ohos/react-native-ble-manager | [~11.5.3](https://www.npmjs.com/package/@react-native-ohos/react-native-ble-manager)   | [GitCode Releases](https://gitcode.com/CPF-RN/rntpc_react-native-ble-manager/releases) | 0.72.* | 否 | API12+ | 11.5.2 | [br_rnoh0.72](https://gitcode.com/CPF-RN/rntpc_react-native-ble-manager/tree/br_rnoh0.72) |
 
-The library is a simple connection with the OS APIs, the BLE stack should be standard but often has different behaviors based on the device used, the operating system and the BLE chip it connects to. Before opening an issue verify that the problem is really the library.
+## 简介
 
-## Requirements
+react-native-ble-manager 是用于 React Native 的蓝牙低功耗（BLE）通信管理库。<br/>
+支持扫描、连接外围设备，获取外围设备的服务与特征，以及特征的读取、写入、开启通知等操作。
 
-RN 0.60+
+## 下载安装
 
-RN 0.40-0.59 supported until 6.7.X
-RN 0.30-0.39 supported until 2.4.3
+对于未发布到npm的旧版本，请参考[安装指南](https://gitcode.com/CPF-RN/usage-docs/blob/master/zh-cn/tgz-usage.md)安装tgz包。
 
-## Supported Platforms
+进入到工程目录并输入以下命令：
 
-- iOS 8+
-- Android (API 19+)
+**npm**
 
-## Install
-
-```shell
-npm i --save react-native-ble-manager
+```bash
+npm install @react-native-ohos/react-native-ble-manager
 ```
 
-The library support the react native autolink feature.
+**yarn**
 
-##### Android - Update Manifest
-
-```xml
-// file: android/app/src/main/AndroidManifest.xml
-<!-- Add xmlns:tools -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="YOUR_PACKAGE_NAME">
-
-    <!--
-      HACK: this permission should not be needed on android 12+ devices anymore,
-      but in fact some manufacturers still need it for BLE to properly work :
-      https://stackoverflow.com/a/72370969
-    -->
-    <uses-permission android:name="android.permission.BLUETOOTH" tools:remove="android:maxSdkVersion" />
-    <!--
-      should normally only be needed on android < 12 if you want to:
-      - activate bluetooth programmatically
-      - discover local BLE devices
-      see: https://developer.android.com/guide/topics/connectivity/bluetooth/permissions#discover-local-devices.
-      Same as above, may still be wrongly needed by some manufacturers on android 12+.
-     -->
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" tools:remove="android:maxSdkVersion" />
-
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28"/>
-    <uses-permission-sdk-23 android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
-
-    <!-- Only when targeting Android 12 or higher -->
-    <!--
-      Please make sure you read the following documentation
-      to have a better understanding of the new permissions.
-      https://developer.android.com/guide/topics/connectivity/bluetooth/permissions#assert-never-for-location
-    -->
-
-    <!-- Needed if your app search for Bluetooth devices. -->
-     <!--
-      If your app doesn't use Bluetooth scan results to derive physical location information,
-      you can strongly assert that your app doesn't derive physical location.
-    -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-                     android:usesPermissionFlags="neverForLocation" />
-    <!-- Needed if you want to interact with a BLE device. -->
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <!-- Needed if your app makes the current device discoverable to other Bluetooth devices. -->
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-...
+```bash
+yarn add @react-native-ohos/react-native-ble-manager
 ```
 
-If you need communication while the app is not in the foreground you need the "ACCESS_BACKGROUND_LOCATION" permission.
+## Link
 
-##### iOS - Update Info.plist
+|                                      | 是否支持autolink | RN框架版本 |
+|--------------------------------------|-----------------|------------|
+| ~11.5.3                              |  No              |  0.72     |
 
-In iOS >= 13 you need to add the `NSBluetoothAlwaysUsageDescription` string key.
+使用AutoLink的工程需要根据该文档配置，Autolink框架指导文档：https://gitcode.com/CPF-RN/ohos_react_native/blob/master/docs/zh-cn/Autolinking.md
 
-## Note
+如您使用的版本支持 Autolink，并且工程已接入 Autolink，可跳过ManualLink配置。
 
-- Remember to use the `start` method before anything.
-- If you have problem with old devices try avoid to connect/read/write to a peripheral during scan.
-- Android API >= 23 require the ACCESS_COARSE_LOCATION permission to scan for peripherals. React Native >= 0.33 natively support PermissionsAndroid like in the example.
-- Android API >= 29 require the ACCESS_FINE_LOCATION permission to scan for peripherals.
-  React-Native 0.63.X started targeting Android API 29.
-- Before write, read or start notification you need to call `retrieveServices` method
-- Because location and bluetooth permissions are runtime permissions, you **must** request these permissions at runtime along with declaring them in your manifest.
+ManualLink: 此步骤为手动配置原生依赖项的指导。
+首先需要使用 DevEco Studio 打开项目里的 HarmonyOS 工程 `harmony`。
 
-## Example
+### 1. Overrides RN SDK
 
-The easiest way to test is simple make your AppRegistry point to our example component, like this:
+为了让工程依赖同一个版本的 RN SDK，需要在工程根目录的 `oh-package.json5` 添加 overrides 字段，指向工程需要使用的 RN SDK 版本。替换的版本既可以是一个具体的版本号，也可以是一个模糊版本，还可以是本地存在的 HAR 包或源码目录。
 
-```javascript
-// in your index.ios.js or index.android.js
-import React, { Component } from "react";
-import { AppRegistry } from "react-native";
-import App from "react-native-ble-manager/example/App"; //<-- simply point to the example js!
-/* 
-Note: The react-native-ble-manager/example directory is only included when cloning the repo, the above import will not work 
-if trying to import react-native-ble-manager/example from node_modules
-*/
-AppRegistry.registerComponent("MyAwesomeApp", () => App);
-```
+关于该字段的作用请阅读[官方说明](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/ide-oh-package-json5-V5#zh-cn_topic_0000001792256137_overrides)
 
-Or, [use the example directly](example)
-
-## Methods
-
-### start(options)
-
-Init the module.
-Returns a `Promise` object.
-Don't call this multiple times.
-
-**Arguments**
-
-- `options` - `JSON`
-
-The parameter is optional the configuration keys are:
-
-- `showAlert` - `Boolean` - [iOS only] Show or hide the alert if the bluetooth is turned off during initialization
-- `restoreIdentifierKey` - `String` - [iOS only] Unique key to use for CoreBluetooth state restoration
-- `queueIdentifierKey` - `String` - [iOS only] Unique key to use for a queue identifier on which CoreBluetooth events will be dispatched
-- `forceLegacy` - `Boolean` - [Android only] Force to use the LegacyScanManager
-
-**Examples**
-
-```js
-BleManager.start({ showAlert: false }).then(() => {
-  // Success code
-  console.log("Module initialized");
-});
-```
-
-### scan(serviceUUIDs, seconds, allowDuplicates, scanningOptions)
-
-Scan for available peripherals.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `serviceUUIDs` - `Array of String` - the UUIDs of the services to looking for. On Android the filter works only for 5.0 or newer.
-- `seconds` - `Integer` - the amount of seconds to scan.
-- `allowDuplicates` - `Boolean` - [iOS only] allow duplicates in device scanning
-- `scanningOptions` - `JSON` - [Android only] after Android 5.0, user can control specific ble scan behaviors:
-  - `numberOfMatches` - `Number` - [Android only] corresponding to [`setNumOfMatches`](<https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder.html#setNumOfMatches(int)>). Defaults to `ScanSettings.MATCH_NUM_MAX_ADVERTISEMENT`. /!\ anything other than default may only work when a `ScanFilter` is active /!\
-  - `matchMode` - `Number` - [Android only] corresponding to [`setMatchMode`](<https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder.html#setMatchMode(int)>). Defaults to `ScanSettings.MATCH_MODE_AGGRESSIVE`.
-  - `callbackType` - `Number` - [Android only] corresponding to [`setCallbackType`](<https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder.html#setCallbackType(int)>). Defaults `ScanSettings.CALLBACK_TYPE_ALL_MATCHES`. /!\ anything other than default may only work when a `ScanFilter` is active /!\
-  - `scanMode` - `Number` - [Android only] corresponding to [`setScanMode`](<https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder.html#setScanMode(int)>). Defaults to `ScanSettings.SCAN_MODE_LOW_POWER`.
-  - `reportDelay` - `Number` - [Android only] corresponding to [`setReportDelay`](<https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder.html#setReportDelay(long)>). Defaults to `0ms`.
-  - `phy` - `Number` - [Android only] corresponding to [`setPhy`](<https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder#setPhy(int)>)
-  - `legacy` - `Boolean` - [Android only] corresponding to [`setLegacy`](<https://developer.android.com/reference/android/bluetooth/le/ScanSettings.Builder#setLegacy(boolean)>)
-  - `exactAdvertisingName` - `string` - [Android only] corresponds to the `ScanFilter` [deviceName](<https://developer.android.com/reference/android/bluetooth/le/ScanFilter.Builder#setDeviceName(java.lang.String)>)
-
-**Examples**
-
-```js
-BleManager.scan([], 5, true).then(() => {
-  // Success code
-  console.log("Scan started");
-});
-```
-
-### stopScan()
-
-Stop the scanning.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.stopScan().then(() => {
-  // Success code
-  console.log("Scan stopped");
-});
-```
-
-### connect(peripheralId, options)
-
-Attempts to connect to a peripheral. In many case if you can't connect you have to scan for the peripheral before.
-Returns a `Promise` object.
-
-> In iOS, attempts to connect to a peripheral do not time out (please see [Apple's doc](https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518766-connect)), so you might need to set a timer explicitly if you don't want this behavior.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral to connect.
-- `options` - `JSON` - The parameter is optional the configuration keys are:
-
-  - `phy` - `Number` - [Android only] corresponding to the preferred phy channel ([`Android doc`](<https://developer.android.com/reference/android/bluetooth/BluetoothDevice?hl=en#connectGatt(android.content.Context,%20boolean,%20android.bluetooth.BluetoothGattCallback,%20int,%20int)>))
-  - `autoconnect` - `Boolean` - [Android only] whether to directly connect to the remote device (false) or to automatically connect as soon as the remote device becomes available (true) ([`Android doc`](<https://developer.android.com/reference/android/bluetooth/BluetoothDevice?hl=en#connectGatt(android.content.Context,%20boolean,%20android.bluetooth.BluetoothGattCallback,%20int,%20int)>))
-
-
-**Examples**
-
-```js
-BleManager.connect("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")
-  .then(() => {
-    // Success code
-    console.log("Connected");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### disconnect(peripheralId, force)
-
-Disconnect from a peripheral.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral to disconnect.
-- `force` - `boolean` - [Android only] defaults to true, if true force closes gatt
-  connection and send the BleManagerDisconnectPeripheral
-  event immediately to Javascript, else disconnects the
-  connection and waits for [`disconnected state`](https://developer.android.com/reference/android/bluetooth/BluetoothProfile#STATE_DISCONNECTED) to
-  [`close the gatt connection`](<https://developer.android.com/reference/android/bluetooth/BluetoothGatt#close()>)
-  and then sends the BleManagerDisconnectPeripheral to the
-  Javascript
-
-**Examples**
-
-```js
-BleManager.disconnect("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")
-  .then(() => {
-    // Success code
-    console.log("Disconnected");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### enableBluetooth() [Android only]
-
-Create the request to the user to activate the bluetooth.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.enableBluetooth()
-  .then(() => {
-    // Success code
-    console.log("The bluetooth is already enabled or the user confirm");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log("The user refuse to enable bluetooth");
-  });
-```
-
-### checkState()
-
-Force the module to check the state of the native BLE manager and trigger a BleManagerDidUpdateState event.
-Resolves to a promise containing the current BleState.
-
-**Examples**
-
-```js
-BleManager.checkState().then((state) =>
-  console.log(`current BLE state = '${state}'.`)
-);
-```
-
-### startNotification(peripheralId, serviceUUID, characteristicUUID)
-
-Start the notification on the specified characteristic, you need to call `retrieveServices` method before.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUID` - `String` - the UUID of the service.
-- `characteristicUUID` - `String` - the UUID of the characteristic.
-
-**Examples**
-
-```js
-BleManager.startNotification(
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-)
-  .then(() => {
-    // Success code
-    console.log("Notification started");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### startNotificationUseBuffer(peripheralId, serviceUUID, characteristicUUID, buffer) [Android only]
-
-Start the notification on the specified characteristic, you need to call `retrieveServices` method before. The buffer collect messages until the buffer of messages bytes reaches the limit defined with the `buffer` argument and then emit all the collected data. Helpful to reducing the number or js bridge crossings when a characteristic is sending a lot of messages.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUID` - `String` - the UUID of the service.
-- `characteristicUUID` - `String` - the UUID of the characteristic.
-- `buffer` - `Integer` - the capacity of the buffer (bytes) stored before emitting the data for the characteristic.
-
-**Examples**
-
-```js
-BleManager.startNotification(
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  1234
-)
-  .then(() => {
-    // Success code
-    console.log("Notification started");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### stopNotification(peripheralId, serviceUUID, characteristicUUID)
-
-Stop the notification on the specified characteristic.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUID` - `String` - the UUID of the service.
-- `characteristicUUID` - `String` - the UUID of the characteristic.
-
-### read(peripheralId, serviceUUID, characteristicUUID)
-
-Read the current value of the specified characteristic, you need to call `retrieveServices` method before.
-Returns a `Promise` object that will resolves to an array of plain integers (`number[]`) representing a `ByteArray` structure.
-That array can then be converted to a JS `ArrayBuffer` for example using `Buffer.from()` [thanks to this buffer module](https://github.com/feross/buffer).
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUID` - `String` - the UUID of the service.
-- `characteristicUUID` - `String` - the UUID of the characteristic.
-
-**Examples**
-
-```js
-BleManager.read(
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-)
-  .then((readData) => {
-    // Success code
-    console.log("Read: " + readData);
-
-    // https://github.com/feross/buffer
-    // https://nodejs.org/api/buffer.html#static-method-bufferfromarray
-    const buffer = Buffer.from(readData);
-    const sensorData = buffer.readUInt8(1, true);
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### write(peripheralId, serviceUUID, characteristicUUID, data, maxByteSize)
-
-Write with response to the specified characteristic, you need to call `retrieveServices` method before.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUID` - `String` - the UUID of the service.
-- `characteristicUUID` - `String` - the UUID of the characteristic.
-- `data` - `number[]` - the data to write as a plain integer array representing a `ByteArray` structure.
-- `maxByteSize` - `Integer` - specify the max byte size before splitting message, defaults to 20 bytes if not specified
-
-**Data preparation**
-
-To convert your data to a `number[]`, you should probably be manipulating a `Buffer` or anything representing a JS `ArrayBuffer`.
-This will make sure you are converting from valid byte representations of your data first and not with [an integer outside the expected range](https://techtutorialsx.com/2019/10/27/node-js-converting-array-to-buffer/).
-
-You can create a buffer from files, numbers or strings easily (see examples bellow).
-
-```js
-// https://github.com/feross/buffer
-import { Buffer } from 'buffer';
-
- * // Creates a Buffer containing the bytes [0x01, 0x02, 0x03].
- * const buffer = Buffer.from([1, 2, 3]);
- *
- * // Creates a Buffer containing the bytes [0x01, 0x01, 0x01, 0x01] – the entries
- * // are all truncated using `(value & 255)` to fit into the range 0–255.
- * const buffer = Buffer.from([257, 257.5, -255, '1']);
- *
- * // Creates a Buffer containing the UTF-8-encoded bytes for the string 'tést':
- * // [0x74, 0xc3, 0xa9, 0x73, 0x74] (in hexadecimal notation)
- * // [116, 195, 169, 115, 116] (in decimal notation)
- * const buffer = Buffer.from('tést');
-```
-
-Feel free to use other packages or google how to convert into byte array if your data has other format.
-
-**Examples**
-
-```js
-BleManager.write(
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  // encode & extract raw `number[]`.
-  // Each number should be in the 0-255 range as it is converted from a valid byte.
-  buffer.toJSON().data
-)
-  .then(() => {
-    // Success code
-    console.log("Write: " + data);
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### writeWithoutResponse(peripheralId, serviceUUID, characteristicUUID, data, maxByteSize, queueSleepTime)
-
-Write without response to the specified characteristic, you need to call `retrieveServices` method before.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUID` - `String` - the UUID of the service.
-- `characteristicUUID` - `String` - the UUID of the characteristic.
-- `data` - `number[]` - the data to write as a plain integer array representing a `ByteArray` structure. (see `write()`).
-- `maxByteSize` - `Integer` - (Optional) specify the max byte size
-- `queueSleepTime` - `Integer` - (Optional) specify the wait time before each write if the data is greater than maxByteSize
-
-**Data preparation**
-
-If your data is not in `number[]` format check info fom the `write()` function example above.
-
-**Example**
-
-```js
-BleManager.writeWithoutResponse(
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  data
-)
-  .then(() => {
-    // Success code
-    console.log("Writed: " + data);
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### readRSSI(peripheralId)
-
-Read the current value of the RSSI.
-Returns a `Promise` object resolving with the updated RSSI value (`number`) if it succeeds.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-
-**Examples**
-
-```js
-BleManager.readRSSI("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")
-  .then((rssi) => {
-    // Success code
-    console.log("Current RSSI: " + rssi);
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### readDescriptor(peripheralId, serviceId, characteristicId, descriptorId)
-
-Read the current value of the specified descriptor, you need to call `retrieveServices` method before.
-Returns a `Promise` object that will resolves to an array of plain integers (`number[]`) representing a `ByteArray` structure.
-That array can then be converted to a JS `ArrayBuffer` for example using `Buffer.from()` [thanks to this buffer module](https://github.com/feross/buffer).
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUID` - `String` - the UUID of the service.
-- `characteristicUUID` - `String` - the UUID of the characteristic.
-- `descriptorUUID` - `String` - the UUID of the descriptor.
-
-**Examples**
-
-```js
-BleManager.readDescriptor(
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  "XXXX"
-)
-  .then((readData) => {
-    // Success code
-    console.log("Read: " + readData);
-
-    // https://github.com/feross/buffer
-    // https://nodejs.org/api/buffer.html#static-method-bufferfromarray
-    const buffer = Buffer.from(readData);
-    const sensorData = buffer.readUInt8(1, true);
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### requestConnectionPriority(peripheralId, connectionPriority) [Android only API 21+]
-
-Request a connection parameter update.
-Returns a `Promise` object which fulfills with the status of the request.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `connectionPriority` - `Integer` - the connection priority to be requested, as follows:
-  - 0 - balanced priority connection
-  - 1 - high priority connection
-  - 2 - low power priority connection
-
-**Examples**
-
-```js
-BleManager.requestConnectionPriority("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", 1)
-  .then((status) => {
-    // Success code
-    console.log("Requested connection priority");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### requestMTU(peripheralId, mtu) [Android only API 21+]
-
-Request an MTU size used for a given connection.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `mtu` - `Integer` - the MTU size to be requested in bytes.
-
-**Examples**
-
-```js
-BleManager.requestMTU("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX", 512)
-  .then((mtu) => {
-    // Success code
-    console.log("MTU size changed to " + mtu + " bytes");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log(error);
-  });
-```
-
-### retrieveServices(peripheralId[, serviceUUIDs])
-
-Retrieve the peripheral's services and characteristics.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-- `serviceUUIDs` - `String[]` - [iOS only] only retrieve these services.
-
-**Examples**
-
-```js
-BleManager.retrieveServices("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX").then(
-  (peripheralInfo) => {
-    // Success code
-    console.log("Peripheral info:", peripheralInfo);
+```json
+{
+  "overrides": {
+    "@rnoh/react-native-openharmony": "^0.72.38" // ohpm 在线版本
+    // "@rnoh/react-native-openharmony" : "./react_native_openharmony.har" // 指向本地 har 包的路径
+    // "@rnoh/react-native-openharmony" : "./react_native_openharmony" // 指向源码路径
   }
-);
-```
-
-### refreshCache(peripheralId) [Android only]
-
-refreshes the peripheral's services and characteristics cache
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-
-**Examples**
-
-```js
-BleManager.refreshCache("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")
-  .then((peripheralInfo) => {
-    // Success code
-    console.log("cache refreshed!");
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-```
-
-### getConnectedPeripherals(serviceUUIDs)
-
-Return the connected peripherals.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `serviceUUIDs` - `Array of String` - the UUIDs of the services to looking for.
-
-**Examples**
-
-```js
-BleManager.getConnectedPeripherals([]).then((peripheralsArray) => {
-  // Success code
-  console.log("Connected peripherals: " + peripheralsArray.length);
-});
-```
-
-### createBond(peripheralId,peripheralPin) [Android only]
-
-Start the bonding (pairing) process with the remote device. If you pass peripheralPin(optional), bonding will be auto(without manual entering pin)
-Returns a `Promise` object that will resolves if the bond is successfully created, otherwise it will be rejected with the appropriate error message.
-
-**Examples**
-
-```js
-BleManager.createBond(peripheralId)
-  .then(() => {
-    console.log("createBond success or there is already an existing one");
-  })
-  .catch(() => {
-    console.log("fail to bond");
-  });
-```
-
-### removeBond(peripheralId) [Android only]
-
-Remove a paired device.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.removeBond(peripheralId)
-  .then(() => {
-    console.log("removeBond success");
-  })
-  .catch(() => {
-    console.log("fail to remove the bond");
-  });
-```
-
-### getBondedPeripherals() [Android only]
-
-Return the bonded peripherals.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.getBondedPeripherals([]).then((bondedPeripheralsArray) => {
-  // Each peripheral in returned array will have id and name properties
-  console.log("Bonded peripherals: " + bondedPeripheralsArray.length);
-});
-```
-
-### getDiscoveredPeripherals()
-
-Return the discovered peripherals after a scan.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.getDiscoveredPeripherals([]).then((peripheralsArray) => {
-  // Success code
-  console.log("Discovered peripherals: " + peripheralsArray.length);
-});
-```
-
-### removePeripheral(peripheralId) [Android only]
-
-Removes a disconnected peripheral from the cached list.
-It is useful if the device is turned off, because it will be re-discovered upon turning on again.
-Returns a `Promise` object.
-
-**Arguments**
-
-- `peripheralId` - `String` - the id/mac address of the peripheral.
-
-### isPeripheralConnected(peripheralId, serviceUUIDs)
-
-Check whether a specific peripheral is connected and return `true` or `false`.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.isPeripheralConnected(
-  "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-  []
-).then((isConnected) => {
-  if (isConnected) {
-    console.log("Peripheral is connected!");
-  } else {
-    console.log("Peripheral is NOT connected!");
-  }
-});
-```
-
-### setName(name) [Android only]
-
-Create the request to set the name of the bluetooth adapter. (https://developer.android.com/reference/android/bluetooth/BluetoothAdapter#setName(java.lang.String))
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.setName("INNOVEIT_CENTRAL")
-  .then(() => {
-    // Success code
-    console.log("Name set successfully");
-  })
-  .catch((error) => {
-    // Failure code
-    console.log("Name could not be set");
-  });
-```
-
-### getMaximumWriteValueLengthForWithoutResponse(peripheralId) [iOS only]
-
-Return the maximum value length for WriteWithoutResponse.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.getMaximumWriteValueLengthForWithoutResponse("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX").then((maxValue) => {
-  console.log("Maximum length for WriteWithoutResponse: " + maxValue);
-});
-```
-
-### getMaximumWriteValueLengthForWitResponse(peripheralId) [iOS only]
-
-Return the maximum value length for WriteWithResponse.
-Returns a `Promise` object.
-
-**Examples**
-
-```js
-BleManager.getMaximumWriteValueLengthForWitResponse("XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX").then((maxValue) => {
-  console.log("Maximum length for WriteWithResponse: " + maxValue);
-});
-```
-
-## Events
-
-### BleManagerStopScan
-
-The scanning for peripherals is ended.
-
-**Arguments**
-
-- `status` - `Number` - [iOS] the reason for stopping the scan. Error code 10 is used for timeouts, 0 covers everything else. [Android] the reason for stopping the scan (<https://developer.android.com/reference/android/bluetooth/le/ScanCallback#constants_1>). Error code 10 is used for timeouts
-
-**Examples**
-
-```js
-bleManagerEmitter.addListener("BleManagerStopScan", (args) => {
-  // Scanning is stopped
-});
-```
-
-### BleManagerDidUpdateState
-
-The BLE change state.
-
-**Arguments**
-
-- `state` - `String` - the new BLE state. can be one of `unknown` (iOS only), `resetting` (iOS only), `unsupported`, `unauthorized` (iOS only), `on`, `off`, `turning_on` (android only), `turning_off` (android only).
-
-**Examples**
-
-```js
-bleManagerEmitter.addListener("BleManagerDidUpdateState", (args) => {
-  // The new state: args.state
-});
-```
-
-### BleManagerDiscoverPeripheral
-
-The scanning find a new peripheral.
-
-**Arguments**
-
-- `id` - `String` - the id of the peripheral
-- `name` - `String` - the name of the peripheral
-- `rssi` - `Number` - the RSSI value
-- `advertising` - `JSON` - the advertising payload, here are some examples:
-  - `isConnectable` - `Boolean`
-  - `serviceUUIDs` - `Array of String`
-  - `manufacturerData` - `JSON` - contains the raw `bytes` and `data` (Base64 encoded string)
-  - `serviceData` - `JSON` - contains the raw `bytes` and `data` (Base64 encoded string)
-  - `txPowerLevel` - `Int`
-
-**Examples**
-
-```js
-bleManagerEmitter.addListener("BleManagerDiscoverPeripheral", (args) => {
-  // The id: args.id
-  // The name: args.name
-});
-```
-
-### BleManagerDidUpdateValueForCharacteristic
-
-A characteristic notify a new value.
-
-**Arguments**
-
-- `value` — `Array` — the read value
-- `peripheral` — `String` — the id of the peripheral
-- `characteristic` — `String` — the UUID of the characteristic
-- `service` — `String` — the UUID of the characteristic
-
-> Event will only be emitted after successful `startNotification`.
-
-**Example**
-
-```js
-import { bytesToString } from "convert-string";
-import { NativeModules, NativeEventEmitter } from "react-native";
-
-const BleManagerModule = NativeModules.BleManager;
-const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
-
-async function connectAndPrepare(peripheral, service, characteristic) {
-  // Connect to device
-  await BleManager.connect(peripheral);
-  // Before startNotification you need to call retrieveServices
-  await BleManager.retrieveServices(peripheral);
-  // To enable BleManagerDidUpdateValueForCharacteristic listener
-  await BleManager.startNotification(peripheral, service, characteristic);
-  // Add event listener
-  bleManagerEmitter.addListener(
-    "BleManagerDidUpdateValueForCharacteristic",
-    ({ value, peripheral, characteristic, service }) => {
-      // Convert bytes array to string
-      const data = bytesToString(value);
-      console.log(`Received ${data} for characteristic ${characteristic}`);
-    }
-  );
-  // Actions triggereng BleManagerDidUpdateValueForCharacteristic event
 }
 ```
 
-### BleManagerConnectPeripheral
+### 2. 引入原生端代码
 
-A peripheral was connected.
+目前有两种方法：
 
-**Arguments**
+- 通过 har 包引入；
+- 直接链接源码。
 
-- `peripheral` - `String` - the id of the peripheral
-- `status` - `Number` - [Android only] connect [`reasons`](<https://developer.android.com/reference/android/bluetooth/BluetoothGattCallback.html#onConnectionStateChange(android.bluetooth.BluetoothGatt,%20int,%20int)>)
+方法一：通过 har 包引入（推荐）
 
-### BleManagerDisconnectPeripheral
+> [!TIP] har 包位于三方库安装路径的 `harmony` 文件夹下。
 
-A peripheral was disconnected.
+打开 `entry/oh-package.json5`，添加以下依赖
 
-**Arguments**
-
-- `peripheral` - `String` - the id of the peripheral
-- `status` - `Number` - [Android only] disconnect [`reasons`](<https://developer.android.com/reference/android/bluetooth/BluetoothGattCallback.html#onConnectionStateChange(android.bluetooth.BluetoothGatt,%20int,%20int)>)
-- `domain` - `String` - [iOS only] disconnect error domain
-- `code` - `Number` - [iOS only] disconnect error code (<https://developer.apple.com/documentation/corebluetooth/cberror/code>)
-
-### BleManagerPeripheralDidBond
-
-A bond with a peripheral was established
-
-**Arguments**
-
-Object with information about the device
-
-### BleManagerCentralManagerWillRestoreState [iOS only]
-
-This is fired when [`centralManager:WillRestoreState:`](https://developer.apple.com/documentation/corebluetooth/cbcentralmanagerdelegate/1518819-centralmanager) is called (app relaunched in the background to handle a bluetooth event).
-
-**Arguments**
-
-- `peripherals` - `Array` - an array of previously connected peripherals.
-
-_For more on performing long-term bluetooth actions in the background:_
-
-[iOS Bluetooth State Preservation and Restoration](https://developer.apple.com/library/archive/documentation/NetworkingInternetWeb/Conceptual/CoreBluetooth_concepts/CoreBluetoothBackgroundProcessingForIOSApps/PerformingTasksWhileYourAppIsInTheBackground.html#//apple_ref/doc/uid/TP40013257-CH7-SW10)
-
-[iOS Relaunch Conditions](https://developer.apple.com/library/archive/qa/qa1962/_index.html)
-
-### BleManagerDidUpdateNotificationStateFor [iOS only]
-
-The peripheral received a request to start or stop providing notifications for a specified characteristic's value.
-
-**Arguments**
-
-- `peripheral` - `String` - the id of the peripheral
-- `characteristic` - `String` - the UUID of the characteristic
-- `isNotifying` - `Boolean` - Is the characteristic notifying or not
-- `domain` - `String` - [iOS only] error domain
-- `code` - `Number` - [iOS only] error code
-
-## Library development
-
-- the library is written in typescript and needs to be built before being used for publication or local development, using the provided npm scripts in `package.json`.
-- the local `example` project is configured to work with the locally built version of the library. To be able to run it, you need to build at least once the library so that its outputs listed as entrypoint in `package.json` (in the `dist` folder) are properly generated for consumption by the example project:
-
-from the root folder:
-
-```shell
-npm install
-npm run build
+```json
+"dependencies": {
+    "@rnoh/react-native-openharmony": "file:../react_native_openharmony",
+    "@react-native-ohos/react-native-ble-manager": "file:../../node_modules/@react-native-ohos/react-native-ble-manager/harmony/ble_manager.har",
+  }
 ```
 
-> if you are modifying the typescript files of the library (in `src/`) on the fly, you can run `npm run watch` instead. If you are modifying files from the native counterparts, you'll need to rebuild the whole app for your target environnement (`npm run android/ios`).
+点击右上角的 `sync` 按钮
+
+或者在终端执行：
+
+```bash
+cd entry
+ohpm install
+```
+
+方法二：直接链接源码
+
+> [!TIP] 如需使用直接链接源码，请参考[直接链接源码说明](https://gitcode.com/CPF-RN/usage-docs/blob/master/zh-cn/link-source-code.md)
+
+### 3. 配置 CMakeLists 和引入 BleManagerPackage
+
+打开 `entry/src/main/cpp/CMakeLists.txt`，添加：
+
+```diff
+project(rnapp)
+cmake_minimum_required(VERSION 3.4.1)
+set(CMAKE_SKIP_BUILD_RPATH TRUE)
+set(RNOH_APP_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(NODE_MODULES "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../node_modules")
++ set(OH_MODULES "${CMAKE_CURRENT_SOURCE_DIR}/../../../oh_modules")
+set(RNOH_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../react-native-harmony/harmony/cpp")
+set(LOG_VERBOSITY_LEVEL 1)
+set(CMAKE_ASM_FLAGS "-Wno-error=unused-command-line-argument -Qunused-arguments")
+set(CMAKE_CXX_FLAGS "-fstack-protector-strong -Wl,-z,relro,-z,now,-z,noexecstack -s -fPIE -pie")
+set(WITH_HITRACE_SYSTRACE 1) # for other CMakeLists.txt files to use
+add_compile_definitions(WITH_HITRACE_SYSTRACE)
+
+add_subdirectory("${RNOH_CPP_DIR}" ./rn)
+
+# RNOH_BEGIN: manual_package_linking_1
+add_subdirectory("../../../../sample_package/src/main/cpp" ./sample-package)
++ add_subdirectory("${OH_MODULES}/@react-native-ohos/react-native-ble-manager/src/main/cpp" ./rnoh_ble_manager)
+
+
+# RNOH_END: manual_package_linking_1
+
+file(GLOB GENERATED_CPP_FILES "./generated/*.cpp")
+
+add_library(rnoh_app SHARED
+    ${GENERATED_CPP_FILES}
+    "./PackageProvider.cpp"
+    "${RNOH_CPP_DIR}/RNOHAppNapiBridge.cpp"
+)
+target_link_libraries(rnoh_app PUBLIC rnoh)
+
+# RNOH_BEGIN: manual_package_linking_2
+target_link_libraries(rnoh_app PUBLIC rnoh_sample_package)
++ target_link_libraries(rnoh_app PUBLIC rnoh_ble_manager)
+# RNOH_END: manual_package_linking_2
+```
+
+打开 `entry/src/main/cpp/PackageProvider.cpp`，添加：
+
+```diff
+#include "RNOH/PackageProvider.h"
+#include "generated/RNOHGeneratedPackage.h"
+#include "SamplePackage.h"
++ #include "BleManagerPackage.h"
+
+using namespace rnoh;
+
+std::vector<std::shared_ptr<Package>> PackageProvider::getPackages(Package::Context ctx) {
+    return {
+      std::make_shared<RNOHGeneratedPackage>(ctx),
+      std::make_shared<SamplePackage>(ctx),
++     std::make_shared<BleManagerPackage>(ctx)
+    };
+}
+```
+
+### 4. 在 ArkTs 侧引入 BlePackage
+
+打开 `entry/src/main/ets/RNPackagesFactory.ts`，添加：
+
+```diff
+  ...
++ import { BlePackage } from '@react-native-ohos/react-native-ble-manager/ts';
+
+
+export function createRNPackages(ctx: RNPackageContext): RNPackage[] {
+  return [
+    new SamplePackage(ctx),
++    new BlePackage(ctx)
+  ];
+}
+```
+
+### 运行
+
+点击右上角的 `sync` 按钮
+
+或者在终端执行：
+
+```bash
+cd entry
+ohpm install
+```
+
+然后编译、运行即可。
+
+## 约束与限制
+
+### 兼容性
+
+本文档内容基于以下版本验证通过：
+
+1. RNOH: 0.72.27; SDK: HarmonyOS-Next-DB1 5.0.0.29(SP1); IDE: DevEco Studio 5.0.3.403; ROM: 3.0.0.25;
+2. RNOH：0.72.33; SDK：OpenHarmony 5.0.0.71(API Version 12 Release); IDE：DevEco Studio 5.0.3.900; ROM：NEXT.0.0.71;
+
+### 权限要求
+
+- 由于此库涉及蓝牙系统控制功能，使用对应接口时则需要配置对应的权限，权限需配置在entry/src/main目录下module.json5文件中。其中部分权限需弹窗向用户申请授权。具体权限配置见文档：[程序访问控制](https://gitee.com/openharmony/docs/blob/master/zh-cn/application-dev/security/AccessToken/Readme-CN.md#/openharmony/docs/blob/master/zh-cn/application-dev/security/AccessToken/app-permission-mgmt-overview.md)。
+
+- 此库部分功能与接口需要normal权限：ohos.permission.ACCESS_BLUETOOTH。
+
+### 编译运行API要求
+
+> [!TIP] 当前三方库所有版本均已实现版本隔离，支持在 `API12+` 工程编译，及 `API12+` ROM运行。
+
+## 使用示例
+
+> [!WARNING] 使用时 import 的库名不变。
+
+```js
+import BleManager from 'react-native-ble-manager';
+
+async function demo(peripheralId: string, serviceUUID: string, characteristicUUID: string) {
+  await BleManager.start();
+
+  const discoverListener = BleManager.addListener(
+    'BleManagerDiscoverPeripheral',
+    (peripheral) => {
+      console.log('发现设备:', peripheral.id, peripheral.name);
+    },
+  );
+
+  await BleManager.scan([serviceUUID], 5, true);
+
+  await BleManager.connect(peripheralId);
+  await BleManager.retrieveServices(peripheralId);
+  const value = await BleManager.read(peripheralId, serviceUUID, characteristicUUID);
+  console.log('read:', value);
+  await BleManager.write(peripheralId, serviceUUID, characteristicUUID, [1]);
+
+  await BleManager.startNotification(peripheralId, serviceUUID, characteristicUUID);
+
+  await BleManager.disconnect(peripheralId);
+  discoverListener.remove();
+}
+```
+
+## 构建 Harmony 示例工程
+
+在 `example/` 目录下运行 `npm run fast:pkg`（需确保 `ohpm` 已在 `PATH` 中）。
+
+`precodegen` 钩子会在 codegen 向已安装的 RNOH 模块写入生成代码之前，先安装鸿蒙侧依赖。
+若在首次 `ohpm install` 之前运行 codegen，依赖目录被替换时会丢失已生成的 `TM` 定义。
+
+## 接口说明
+
+> [!TIP] "Platform"列表示该属性在原三方库上支持的平台。
+
+> [!TIP] "OpenHarmony Support"列为 yes 表示 OpenHarmony平台支持 该属性；no 则表示不支持；partially 表示部分支持。使用方法跨平台一致，效果对标 iOS 或 Android 的效果。
+
+### API
+
+| 名称                                         | 描述                                                         | 类型                    | 必填     | 平台        | OpenHarmony平台支持 |
+| -------------------------------------------- | ------------------------------------------------------------ | ----------------------- | -------- | ----------- | ----------------- |
+| `start`                                        | 初始化模块。返回一个 Promise 对象。请勿多次调用此方法。      | Promise                 | No       | IOS/Android | Yes               |
+| `scan`                                         | 扫描可用的外围设备                                           | Promise                 | No       | IOS/Android | Yes               |
+| `stopScan`                                     | 停止扫描                                                     | Promise\<void\>         | No       | IOS/Android | Yes               |
+| `connect`                                      | 尝试连接到外围设备。多数情况下，如果无法连接，你需要先扫描外围设备。 | Promise                 | No       | IOS/Android | Yes               |
+| `disconnect`                                   | 断开与外围设备的连接                                         | Promise\<void\>         | No       | IOS/Android | Yes               |
+| `enableBluetooth`                              | 创建 ACTION_REQUEST_ENABLE 以请求用户开启蓝牙                | Promise\<void\>         | No       | Android     | Yes               |
+| `checkState`                                   | 强制模块检查原生 BLE 管理器的状态，并触发 BleManagerDidUpdateState 事件 | Promise\<BleState\>     | No       | IOS/Android | Yes               |
+| `readRSSI`                                     | 读取当前 RSSI 值                                             | Promise                 | No       | IOS/Android | Yes               |
+| `createBond`                                   | 启动与远程设备的绑定（配对）过程                             | Promise                 | No       | Android     | Yes               |
+| `retrieveServices`                             | 获取外围设备的服务和特征                                     | Promise                 | No       | IOS/Android | Yes               |
+| `startNotification`                            | 在指定特征上开启通知                                         | Promise                 | No       | IOS/Android | Yes               |
+| `read`                                         | 读取指定特征的当前值                                         | Promise                 | No       | IOS/Android | Yes               |
+| `write`                                        | 向指定特征写入（带响应）                                     | Promise                 | No       | IOS/Android | Yes               |
+| `readDescriptor`                               | 读取指定描述符的当前值                                       | Promise                 | No       | IOS/Android | Yes               |
+| `writeDescriptor`                              | 向指定描述符写入值                                           | Promise                 | No       | IOS/Android | Yes               |
+| `requestMTU`                                   | 请求指定连接所使用的 MTU 大小                                | Promise                 | No       | Android     | Yes               |
+| `getConnectedPeripherals`                      | 返回已连接的外围设备                                         | Promise\<Peripheral[]\> | No       | IOS/Android | Yes               |
+| `getBondedPeripherals`                         | 返回已绑定的外围设备                                         | Promise\<Peripheral[]\> | No       | IOS/Android | Yes               |
+| `getDiscoveredPeripherals`                     | 返回扫描后已发现的外围设备                                   | Promise\<Peripheral[]\> | No       | IOS/Android | Yes               |
+| `removeBond`                                   | 移除已配对的设备                                             | Promise                 | No       | Android     | No                |
+| `refreshCache`                                 | 刷新外围设备的服务和特征缓存                                 | Promise                 | No       | Android     | No                |
+| `requestConnectionPriority`                    | 请求连接参数更新                                             | Promise                 | No       | Android     | No                |
+| `startNotificationUseBuffer`                        | 在指定特征上开启通知（使用缓冲区）。                           | Promise                 | No       | IOS/Android | No               |
+| `removePeripheral`                             | 从缓存列表中移除已断开连接的外围设备                         | Promise                 | No       | Android     | Yes               |
+| `CompanionScan`                                | 扫描配套设备                                                 | Promise                 | No       | Android     | No                |
+| `getAssociatedPeripherals`                     | 获取关联的外围设备（来自配套设备管理器）                     | Promise\<Peripheral[]\> | No       | Android     | No                |
+| `removeAssociatedPeripheral`                   | 移除已关联的外围设备                                         | Promise                 | No       | Android     | No                |
+| `setName`                                      | 创建设置蓝牙适配器名称的请求                                 | void                    | No       | Android     | No                |
+| `isScanning`                                   | 检查扫描是否正在进行，返回 true 或 false                     | Promise\<boolean\>      | No       | IOS/Android | Yes               |
+| `writeWithoutResponse`                         | 向指定特征写入（不带响应）                                   | Promise                 | No       | IOS/Android | No                |
+| `getMaximumWriteValueLengthForWithoutResponse` | 返回无响应写入的最大值长度                                   | Promise\<number\>       | No       | IOS         | No                |
+| `getMaximumWriteValueLengthForWithResponse`    | 返回带响应写入的最大值长度                                   | Promise\<number\>       | No       | IOS         | No                |
+| `isPeripheralConnected`                        | 检查指定外围设备是否已连接，返回 true 或 false               | Promise\<boolean\>      | No       | IOS         | Yes               |
+| `supportsCompanion`                            | 检查当前设备是否支持配套设备管理器                           | Promise\<boolean\>      | No       | Android     | No                |
+| `stopNotification`                             | 停止指定特征上的通知                                         | Promise                 | No       | IOS/Android | No                |
+
+## 遗留问题
+
+- refreshCache 用于清理和刷新蓝牙设备缓存的一部分 [issue#3](https://github.com/react-native-oh-library/react-native-ble-manager/issues/3)
+- requestConnectionPriority 用于请求蓝牙连接优先级 [issue#4](https://github.com/react-native-oh-library/react-native-ble-manager/issues/4)
+- startNotificationUseBuffer 用来启动一个带缓冲区的通知服务 [issue#6](https://github.com/react-native-oh-library/react-native-ble-manager/issues/6)
+- CompanionScan 扫描配套设备[issue#5](https://github.com/react-native-oh-library/react-native-ble-manager/issues/5)
+- getAssociatedPeripherals 检索相关外围设备（从配套管理器） [issue#7](https://github.com/react-native-oh-library/react-native-ble-manager/issues/7)
+- removeAssociatedPeripheral 移除相关外围设备  [issue#8](https://github.com/react-native-oh-library/react-native-ble-manager/issues/8)
+- setName 创建设置蓝牙适配器名称  [issue#9](https://github.com/react-native-oh-library/react-native-ble-manager/issues/9)
+- supportsCompanion 检查当前设备是否支持配套设备管理器 [issue#10](https://github.com/react-native-oh-library/react-native-ble-manager/issues/10)
+- stopNotification 停止指定特征的通知 [issue#11](https://github.com/react-native-oh-library/react-native-ble-manager/issues/11)
+- writeWithoutResponse 写入不响应指定特性 [issue#12](https://github.com/react-native-oh-library/react-native-ble-manager/issues/12)
+- removeBond 删除已配对的设备 [issue#13](https://github.com/react-native-oh-library/react-native-ble-manager/issues/13)
+- getMaximumWriteValueLengthForWithoutResponse 用于获取在不带响应的情况下可以写入的最大数据长度 [issue#14](https://github.com/react-native-oh-library/react-native-ble-manager/issues/14)
+- getMaximumWriteValueLengthForWithResponse 它用于获取在带有响应的情况下可以写入的最大数据长度  [issue#15](https://github.com/react-native-oh-library/react-native-ble-manager/issues/15)
+
+## 其他
+
+无
+
+## 目录结构
+
+````
+/rntpc_react-native-ble-manager  # 项目根目录
+├── harmony                        # 鸿蒙适配代码
+│    ├─ ble_manager.har            # har包
+│    ├─ ble_managerGatt.har        # GATT har包
+│    ├─ ble_managerServers.har     # Servers har包
+│    └─ ble_manager                # 鸿蒙适配核心代码
+│         ├─ index.ets             # 鸿蒙适配代码入口
+│         └─ src/main/ets          # 鸿蒙适配源码
+│              ├─ BlePackage.ts    # 包入口，注册 BleTurboModule
+│              ├─ BleTurboModule.ts # TurboModule 实现，桥接 JS 与原生 BLE 接口
+│              ├─ DefaultScanManager.ts # 扫描管理实现
+│              ├─ PeripheralData.ts # 外围设备数据封装
+│              ├─ BleManagerLogger.ts # 日志工具
+│              ├─ types.ts         # 鸿蒙侧类型定义
+│              └─ utils/Util.ts    # 工具类
+├── src                            # RN代码
+│    ├─ index.ts                   # 入口文件
+│    ├─ types.ts                   # 类型文件
+│    └─ NativeGeneratedBleManagerTurboModule.ts # codegen类型文件
+├── docs                           # 原库文档
+├── README.md                      # 中文安装使用方法
+└── README_en.md                   # 英文安装使用方法
+````
+
+## 贡献代码
+
+使用过程中发现任何问题都可以提交 [Issue](https://gitcode.com/CPF-RN/rntpc_react-native-ble-manager/issues)，当然，也非常欢迎提交 [PR](https://gitcode.com/CPF-RN/rntpc_react-native-ble-manager/pulls) 。
+
+## 开源协议
+
+本项目基于 [The MIT License (MIT)](https://github.com/innoveit/react-native-ble-manager/blob/master/LICENSE) ，请自由地享受和参与开源。
