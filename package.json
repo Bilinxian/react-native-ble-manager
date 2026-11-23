@@ -42,12 +42,7 @@
     "!build"
   ],
   "harmony": {
-    "alias": "react-native-ble-manager",
-    "codegenConfig": {
-      "specPaths": [
-        "./src"
-      ]
-    }
+    "alias": "react-native-ble-manager"
   },
   "peerDependencies": {
     "react-native": ">=0.60.0",
