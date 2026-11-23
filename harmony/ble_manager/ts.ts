@@ -5,4 +5,4 @@
  */
 
 export * from "./src/main/ets/BlePackage"
-export * from "./src/main/ets/BleTurboModule"
+export * from "./src/main/ets/BleManagerTurboModule"

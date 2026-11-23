@@ -1,9 +1,3 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd. All rights reserved
- * Use of this source code is governed by a MIT license that can be
- * found in the LICENSE file.
- */
-
 import { TurboModule, RNOHContext, RNOHLogger } from '@rnoh/react-native-openharmony/ts';
 import access from '@ohos.bluetooth.access';
 import ble from '@ohos.bluetooth.ble';
@@ -19,9 +13,7 @@ import {
   Service,
   Descriptor,
   Peripheral,
-  CompanionScanOptions,
-  ConnectOptions,
-  ConnectionPriority,
+  TransportType
 } from "./types"
 import DefaultScanManager from './DefaultScanManager';
 import LightWeightMap from '@ohos.util.LightWeightMap';
@@ -31,15 +23,15 @@ import connection from '@ohos.bluetooth.connection';
 import PeripheralData from './PeripheralData';
 import Utils from './utils/Util';
 import { util } from '@kit.ArkTS';
-import deviceInfo from '@ohos.deviceInfo';
+
 
 const LOGGER_NAME = 'RNBleManager'
 const TAG = 'BleTurboModule'
+const SPP_UUID = '00001101-0000-1000-8000-00805f9b34fb'
 
 export type TurboModuleContext = RNOHContext;
 
-
-export class BleTurboModule extends TurboModule {
+export class BleManagerTurboModule extends TurboModule {
   public logger: RNOHLogger;
   private scanManager: DefaultScanManager;
   private peripherals: LightWeightMap<string, PeripheralData> = new LightWeightMap<string, PeripheralData>();
@@ -53,64 +45,6 @@ export class BleTurboModule extends TurboModule {
   constructor(ctx) {
     super(ctx)
     this.logger = this.ctx.logger.clone(LOGGER_NAME)
-    this.gattServer = ble.createGattServer();
-  }
-
-  refreshCache(peripheralId: string): Promise<boolean> {
-    throw new Error('Method not implemented.');
-  }
-
-  writeWithoutResponse(peripheralId: string, serviceUUID: string, characteristicUUID: string, data: number[],
-    maxByteSize: number, queueSleepTime: number): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  startNotificationUseBuffer(peripheralId: string, serviceUUID: string, characteristicUUID: string,
-    buffer: number): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  stopNotification(peripheralId: string, serviceUUID: string, characteristicUUID: string): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  requestConnectionPriority(peripheralId: string, connectionPriority: ConnectionPriority): Promise<boolean> {
-    throw new Error('Method not implemented.');
-  }
-
-  getAssociatedPeripherals(): Promise<unknown[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  removeAssociatedPeripheral(peripheralId: string): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  supportsCompanion(): Promise<boolean> {
-    throw new Error('Method not implemented.');
-  }
-
-  companionScan(serviceUUIDs: string[], options: CompanionScanOptions): Promise<unknown> {
-    throw new Error('Method not implemented.');
-  }
-
-  setName(name: string): void {
-    throw new Error('Method not implemented.');
-  }
-  addListener(eventName: string): void {
-
-  }
-
-  removeListeners(count: number): void {
-
-  }
-
-  getMaximumWriteValueLengthForWithoutResponse(peripheralId: string): Promise<number> {
-    throw new Error('Method not implemented.');
-  }
-
-  getMaximumWriteValueLengthForWithResponse(peripheralId: string): Promise<number> {
-    throw new Error('Method not implemented.');
   }
 
   read(peripheralId: string, serviceUUID: string, characteristicUUID: string): Promise<number[]> {
@@ -159,7 +93,6 @@ export class BleTurboModule extends TurboModule {
       })
     });
   }
-
 
   readDescriptor(peripheralId: string, serviceUUID: string, characteristicUUID: string,
     descriptorUUID: string): Promise<number[]> {
@@ -264,13 +197,13 @@ export class BleTurboModule extends TurboModule {
 
   async write(peripheralId: string, serviceUUID: string, characteristicUUID: string, data: number[],
     maxByteSize: number): Promise<void> {
-    if(serviceUUID === null || characteristicUUID === null) {
+    if (serviceUUID === null || characteristicUUID === null) {
       return Promise.reject('ServiceUUID and characteristicUUID required.')
     }
     try {
       let peripheral = this.peripherals.get(peripheralId);
       if (peripheral) {
-        return peripheral.write(serviceUUID,characteristicUUID,new Uint8Array(data),maxByteSize,ble.GattWriteType.WRITE);
+        return peripheral.write(serviceUUID, characteristicUUID, data, maxByteSize, ble.GattWriteType.WRITE);
       } else {
         return Promise.reject('Peripheral not found')
       }
@@ -282,6 +215,9 @@ export class BleTurboModule extends TurboModule {
 
   startNotification(peripheralId: string, serviceUUID: string, characteristicUUID: string): Promise<void> {
     let peripheral: PeripheralData = this.retrieveOrCreatePeripheral(peripheralId);
+    if (peripheral?.isSpp()) {
+      return Promise.resolve();
+    }
     return new Promise((resolve, reject) => {
       peripheral.retrieveServices(peripheralId, [serviceUUID]).then((result: Array<ble.GattService>) => {
         if (result.length > 0) {
@@ -324,14 +260,7 @@ export class BleTurboModule extends TurboModule {
 
   getConnectedPeripherals(): Promise<Peripheral[]> {
     try {
-      let apiVersion = deviceInfo.sdkApiVersion;
-      let result: Array<string>;
-      if (apiVersion >= 21){
-        let profile = ble.BleProfile.GATT_CLIENT
-        result = ble.getConnectedBLEDevices(profile)
-      } else{
-        result = ble.getConnectedBLEDevices();
-      }
+      let result: Array<string> = ble.getConnectedBLEDevices();
       const perList: Peripheral[] = [];
       result.forEach(item => {
         let peripheralData: PeripheralData = this.retrieveOrCreatePeripheral(item);
@@ -339,34 +268,53 @@ export class BleTurboModule extends TurboModule {
           rssi: peripheralData.getRssi(),
           id: peripheralData.getDeviceId(),
           name: peripheralData.getDeviceName(),
-          advertising:peripheralData.asPeripheral().advertising,
+          advertising: peripheralData.asPeripheral().advertising,
         }
         perList.push(peripheral);
       })
+      Array.from(this.peripherals.values()).forEach((peripheralData) => {
+        if (peripheralData.isSpp() && peripheralData.isConnected()) {
+          perList.push(peripheralData.asPeripheral());
+        }
+      });
       return Promise.resolve(perList);
     } catch (err) {
       Logger.error(TAG, (err as BusinessError).code + ', errMessage: ' + (err as BusinessError).message);
     }
   }
 
-  getBondedPeripherals(): Promise<Peripheral[]> {
+  async getBondedPeripherals(): Promise<Peripheral[]> {
     try {
       let devices: Array<string> = connection.getPairedDevices();
       const perList: Peripheral[] = [];
-      devices.forEach(item => {
-        let peripheralData: PeripheralData = this.retrieveOrCreatePeripheral(item);
-        const peripheral: Peripheral = {
-          rssi: peripheralData.getRssi(),
-          id: peripheralData.getDeviceId(),
-          name: peripheralData.getDeviceName(),
-          advertising:peripheralData.asPeripheral().advertising,
+      for (const item of devices) {
+        let deviceName = '';
+        try {
+          deviceName = connection.getRemoteDeviceName(item);
+          const profileUUIDs = await connection.getRemoteProfileUuids(item);
+          const supportsSpp = profileUUIDs.some((uuid) => String(uuid).toLowerCase() === SPP_UUID);
+          if (!supportsSpp && !/(^gp[-_ ]|gprinter|printer|佳博)/i.test(deviceName)) {
+            continue;
+          }
+        } catch (_error) {
+          if (!/(^gp[-_ ]|gprinter|printer|佳博)/i.test(deviceName)) {
+            continue;
+          }
         }
-        perList.push(peripheral);
-      })
-      return Promise.resolve(perList);
+        let peripheralData = this.peripherals.get(item);
+        if (!peripheralData || !peripheralData.isSpp()) {
+          peripheralData = new PeripheralData(this.ctx);
+          peripheralData.setDeviceId(item);
+          peripheralData.setDeviceName(deviceName || item);
+          peripheralData.setTransport(TransportType.SPP);
+          this.savePeripheral(peripheralData);
+        }
+        perList.push(peripheralData.asPeripheral());
+      }
+      return perList;
     } catch (err) {
       return Promise.reject('errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message)
+        (err as BusinessError).message)
     }
   }
 
@@ -378,7 +326,7 @@ export class BleTurboModule extends TurboModule {
         rssi: item.getRssi(),
         id: item.getDeviceId(),
         name: item.getDeviceName(),
-        advertising:item.asPeripheral().advertising,
+        advertising: item.asPeripheral().advertising,
       }
       perList.push(peripheral);
     })
@@ -397,6 +345,27 @@ export class BleTurboModule extends TurboModule {
 
   retrieveServices(peripheralId: string, serviceUUIDs?: string[]): Promise<PeripheralInfo> {
     let peripheral: PeripheralData = this.retrieveOrCreatePeripheral(peripheralId);
+    if (peripheral?.isSpp()) {
+      if (!peripheral.isConnected()) {
+        return Promise.reject('Device is not connected');
+      }
+      const serviceUUID = 'e7810a71-73ae-499d-8c15-faa9aef0c3f2';
+      const characteristicUUID = 'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f';
+      return Promise.resolve({
+        id: peripheral.getDeviceId(),
+        serviceUUIDs: [serviceUUID],
+        services: [{ uuid: serviceUUID }],
+        characteristics: [{
+          characteristic: characteristicUUID,
+          service: serviceUUID,
+          descriptors: [],
+          properties: {
+            Write: "Write",
+            WriteWithoutResponse: "WriteWithoutResponse"
+          }
+        }]
+      });
+    }
     return new Promise((resolve, reject) => {
       peripheral.retrieveServices(peripheralId, serviceUUIDs).then((result: Array<ble.GattService>) => {
         if (result.length > 0) {
@@ -407,7 +376,7 @@ export class BleTurboModule extends TurboModule {
             newArray = result.filter(item => {
               if (item.characteristics[0].descriptors.length > 0) {
                 if (serviceUUIDs.includes(item.serviceUuid) &&
-                serviceUUIDs.includes(item.characteristics[0].descriptors[0].serviceUuid)) {
+                  serviceUUIDs.includes(item.characteristics[0].descriptors[0].serviceUuid)) {
                   return item;
                 }
               }
@@ -428,7 +397,9 @@ export class BleTurboModule extends TurboModule {
                 service: r.serviceUuid,
                 descriptors: [perinfoDescriptor],
                 properties: {
-                  Write: r.properties?.write ? "Write" : null
+                  Write: r.properties?.write ? "Write" : undefined,
+                  Notify: r.properties?.notify ? "Notify" : undefined,
+                  WriteWithoutResponse: r.properties?.writeNoResponse ? "WriteWithoutResponse" : undefined
                 }
               }
               perinfoCharacteristics.push(character)
@@ -442,9 +413,12 @@ export class BleTurboModule extends TurboModule {
             serviceUUIDs: perinfoServiceUUIDs,
             services: perinfoServices,
             characteristics: perinfoCharacteristics,
+            id: peripheralId
           }
           resolve(perInfo);
+          return
         }
+        reject("Peripheral not found");
       }).catch(error => {
         reject(error + "Peripheral not found");
       })
@@ -454,11 +428,6 @@ export class BleTurboModule extends TurboModule {
   sendEvent(eventName: string, payload: any) {
     this.ctx.rnInstance.emitDeviceEvent(eventName, payload)
   }
-
-  sendServices(eventName: string, payload: any) {
-    this.ctx.rnInstance.emitDeviceEvent(eventName, payload)
-  }
-
 
   checkState(): Promise<BleState> {
     let state = access.getState();
@@ -486,13 +455,6 @@ export class BleTurboModule extends TurboModule {
   }
 
   start(options: StartOptions): Promise<void> {
-    Logger.info("start")
-    this.startAdvertising()
-    this.addService()
-    this.onCharacteristicWrite()
-    this.onCharacteristicRead()
-    this.onDescriptorWrite()
-    this.onDescriptorRead()
     this.scanManager = new DefaultScanManager(this.ctx, this)
     access.on('stateChange', this.onStateChange.bind(this));
     connection.on('bondStateChange', this.onBondStateChange.bind(this));
@@ -543,7 +505,6 @@ export class BleTurboModule extends TurboModule {
         bondStateStr = "BOND_NONE";
         break;
     }
-    ;
     this.logger.info("bond state: " + bondStateStr);
     if (this.bondRequest != null && this.bondRequest.uuid === deviceId) {
       if (bondState === connection.BondState.BOND_STATE_BONDED) {
@@ -596,9 +557,16 @@ export class BleTurboModule extends TurboModule {
   stopScan(): Promise<void> {
     try {
       ble.stopBLEScan();
-    } catch (error) {
-      return Promise.reject('No bluetooth support')
+    } catch (_error) {
     }
+    try {
+      if (connection.isBluetoothDiscovering()) {
+        connection.stopBluetoothDiscovery();
+      }
+    } catch (_error) {
+    }
+    this.scanManager.offBLEDeviceFind()
+    this.scanManager.offClassicDeviceFind()
     this.scanManager.setIsScanning()
     let bleStopScanEvent: BleStopScanEvent = {
       status: 0
@@ -629,27 +597,33 @@ export class BleTurboModule extends TurboModule {
     return Promise.resolve();
   }
 
-  connect(peripheralId: string, options: ConnectOptions): Promise<void> {
+  async connect(peripheralId: string): Promise<void> {
     this.logger.info("Connect to: " + peripheralId)
     const peripheral = this.retrieveOrCreatePeripheral(peripheralId)
     if (peripheral === null || peripheral === undefined) {
       return Promise.reject("Invalid peripheral uuid")
     }
-    const success = peripheral.connect(options);
-    return success ? Promise.resolve() : Promise.reject("BluetoothGatt is null");
+    if (peripheral.isSpp()) {
+      if (connection.getPairState(peripheralId) !== connection.BondState.BOND_STATE_BONDED) {
+        return Promise.reject("请先在系统蓝牙设置中配对经典蓝牙打印机")
+      }
+      await peripheral.connectSppAsync();
+      return;
+    }
+    const success = peripheral.connect();
+    if (!success) {
+      return Promise.reject("BluetoothGatt is null");
+    }
   }
 
   disconnect(peripheralId: string, force: boolean): Promise<void> {
-    this.logger.info("Disconnect from: " + peripheralId);
+    this.logger.info(`Disconnect from: ${peripheralId}`);
     const peripheral = this.peripherals.get(peripheralId);
-    if (peripheral.isConnected()) {
-      const err = peripheral.disconnect()
-      if (err) {
-        return Promise.reject(err)
-      }
+    if (peripheral?.isConnected()) {
+      peripheral.disconnect()
       return Promise.resolve();
     }
-    return Promise.reject('Peripheral not found')
+    return Promise.resolve()
   }
 
   removePeripheral(peripheralId: string): Promise<void> {
@@ -676,16 +650,13 @@ export class BleTurboModule extends TurboModule {
   }
 
 
-  isPeripheralConnected(peripheralId: string, serviceUUIDs: string[]): Promise<boolean> {
+  isPeripheralConnected(peripheralId: string): Promise<boolean> {
+    const peripheral = this.retrieveOrCreatePeripheral(peripheralId);
+    if (peripheral?.isSpp()) {
+      return Promise.resolve(peripheral.isConnected());
+    }
     return new Promise((resolve, reject) => {
-      let apiVersion = deviceInfo.sdkApiVersion;
-      let result: Array<string>;
-      if (apiVersion >= 21){
-        let profile = ble.BleProfile.GATT_CLIENT
-        result = ble.getConnectedBLEDevices(profile)
-      } else{
-        result = ble.getConnectedBLEDevices();
-      }
+      let result: Array<string> = ble.getConnectedBLEDevices();
       result.forEach((item) => {
         return item
       })
@@ -701,13 +672,27 @@ export class BleTurboModule extends TurboModule {
     return Promise.resolve()
   }
 
-  readRSSI(peripheralId: string): Promise<number> {
+  async readRSSI(peripheralId: string): Promise<number> {
     this.logger.info("Read RSSI from: " + peripheralId)
     const peripheral = this.peripherals.get(peripheralId);
     if (peripheral) {
-      return peripheral.readRSSI()
+      try {
+        const rssi = await peripheral.readRSSI()
+        return rssi
+      } catch (e) {
+        Logger.info(TAG, "RSSI e = " + e)
+        return Promise.reject(e)
+      }
     }
     return Promise.reject('Peripheral not found')
+  }
+
+  addListener(eventName: string): void {
+
+  }
+
+  removeListeners(count: number): void {
+
   }
 
   savePeripheral(peripheral: PeripheralData) {
@@ -717,6 +702,13 @@ export class BleTurboModule extends TurboModule {
   getPeripheral(result: ble.ScanResult): PeripheralData {
     const deviceId = result.deviceId
     return this.peripherals.get(deviceId)
+  }
+
+  /**
+   * 按设备标识获取 BLE 或 SPP 外设。
+   */
+  getPeripheralById(device_id: string): PeripheralData {
+    return this.peripherals.get(device_id)
   }
 
   clearPeripheral() {
@@ -738,7 +730,8 @@ export class BleTurboModule extends TurboModule {
     if (peripheralData === null || peripheralData === undefined) {
       if (peripheralId) {
         peripheralId = peripheralId.toLowerCase();
-      };
+      }
+      ;
       if (this.isBluetoothAddress(peripheralId)) {
         try {
           let device: ble.GattClientDevice = ble.createGattClientDevice(peripheralId);
@@ -746,12 +739,11 @@ export class BleTurboModule extends TurboModule {
           this.peripherals.set(peripheralId, peripheralData);
           device.connect()
         } catch (error) {
-          Logger.error(JSON.stringify(error))
+          Logger.error("retrieveOrCreatePeripheral：" + JSON.stringify(error))
         }
       }
-      ;
+
     }
-    ;
     return peripheralData;
   }
 
@@ -768,18 +760,12 @@ export class BleTurboModule extends TurboModule {
           let characteristicUuid: string = characteristicChangeReq.characteristicUuid;
           let value: Uint8Array = new Uint8Array(characteristicChangeReq.characteristicValue);
           Logger.info('BluetoothPage BLECharacteristicChange value = ' + JSON.stringify(characteristicChangeReq))
-          this.sendEvent('BLECharacteristicChange', {data:{
-            service:serviceUuid,
-            peripheral:gattClient,
-            characteristic:characteristicUuid,
-            value:value,
-          }});
         })
         Logger.info('BluetoothPage bleCharacteristicChange ');
       }
     } catch (err) {
       Logger.error(TAG, 'bleCharacteristicChange errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message);
+        (err as BusinessError).message);
     }
   }
 
@@ -835,13 +821,12 @@ export class BleTurboModule extends TurboModule {
           return;
         } else {
           advHandle = outAdvHandle;
-          console.log("advHandle: " + advHandle);
           this.addService()
         }
       });
     } catch (err) {
       Logger.error(TAG, 'ble server startAdvertising errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message);
+        (err as BusinessError).message);
     }
   }
 
@@ -894,7 +879,7 @@ export class BleTurboModule extends TurboModule {
       this.gattServer.addService(gattService);
     } catch (err) {
       Logger.error(TAG, 'ble server addService errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message);
+        (err as BusinessError).message);
     }
   }
 
