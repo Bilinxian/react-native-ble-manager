@@ -13,7 +13,7 @@ namespace rnoh {
 class BleManagerPackageTurboModuleFactoryDelegate : public TurboModuleFactoryDelegate {
   public:
     SharedTurboModule createTurboModule(Context ctx, const std::string &name) const override {
-        if (name == "ReactNativeBleManager") {
+        if (name == "BleManager") {
             return std::make_shared<ReactNativeBleManager>(ctx, name);
         }
         return nullptr;

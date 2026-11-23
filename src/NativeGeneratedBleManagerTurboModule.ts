@@ -97,4 +97,4 @@ export interface Spec extends TurboModule {
 }
 
 
-export default TurboModuleRegistry.get<Spec>('ReactNativeBleManager')!;
+export default TurboModuleRegistry.getEnforcing<Spec>('BleManager');

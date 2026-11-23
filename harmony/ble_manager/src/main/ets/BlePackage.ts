@@ -13,14 +13,14 @@ import { BleTurboModule } from './BleTurboModule';
 
 class BleTurboModulesFactory extends TurboModulesFactory {
   createTurboModule(name: string): TurboModule | null {
-    if (name === 'ReactNativeBleManager') {
+    if (name === 'BleManager') {
       return new BleTurboModule(this.ctx);
     }
     return null;
   }
 
   hasTurboModule(name: string): boolean {
-    return name === 'ReactNativeBleManager';
+    return name === 'BleManager';
   }
 }
 
